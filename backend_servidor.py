@@ -36,7 +36,7 @@ LISTA_NEGRA_USUARIOS = set()
 LISTA_NEGRA_PALABRAS = set()
 
 # Puerto del servidor
-PUERTO = 5080
+PUERTO = 443
 HOST = "0.0.0.0"  # Accesible desde cualquier IP
 
 # ─── Flask + SocketIO ─────────────────────────────────────────────────────────
@@ -276,3 +276,4 @@ if __name__ == '__main__':
     
     # Iniciar servidor
     socketio.run(app, host=HOST, port=PUERTO, debug=False, allow_unsafe_werkzeug=True)
+        
