@@ -55,11 +55,11 @@ PUERTO = 5080
 HOST = "0.0.0.0"  # Accesible desde cualquier IP
 
 # ─── Configuración SSL/HTTPS ──────────────────────────────────────────────────
-CERT_FILE = "/etc/ssl/certs/servidor.crt"
-KEY_FILE = "/etc/ssl/private/servidor.key"
+CERT_FILE = None
+KEY_FILE  = None
 
 # Auto-detectar certificados
-if not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
+if not CERT_FILE or not KEY_FILE or not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
     logger.warning("⚠️  Certificados auto-firmados no encontrados")
     logger.warning(f"   Buscados en: {CERT_FILE} y {KEY_FILE}")
     CERT_FILE = None
