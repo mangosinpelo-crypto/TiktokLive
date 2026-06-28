@@ -1,0 +1,32 @@
+[28/06/2026 06:51:26] INFO    : ✅ Certificados auto-firmados detectados
+[28/06/2026 06:51:26] INFO    : Inicializando Flask y SocketIO...
+[28/06/2026 06:51:26] INFO    : Server initialized for threading.
+[28/06/2026 06:51:26] INFO    : ✅ Flask y SocketIO inicializados
+[28/06/2026 06:51:26] INFO    : 
+╔════════════════════════════════════════════╗
+║  TikTok Live Reader - Backend             ║
+║  Protocolo: HTTPS                       ║
+║  Puerto: 5080                                ║
+║  URL: https://0.0.0.0:5080                 ║
+╚════════════════════════════════════════════╝
+    
+[28/06/2026 06:51:26] INFO    : Iniciando procesador de cola...
+[28/06/2026 06:51:26] DEBUG   : Using selector: EpollSelector
+[28/06/2026 06:51:26] INFO    : Procesador de cola iniciado
+[28/06/2026 06:51:26] INFO    : Cargando certificados SSL...
+[28/06/2026 06:51:26] INFO    : ✅ SSL/HTTPS activado
+[28/06/2026 06:51:26] INFO    : Iniciando servidor en HTTPS...
+[28/06/2026 06:51:26] INFO    : ==================================================
+[28/06/2026 06:51:26] INFO    : [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on https://127.0.0.1:5080
+ * Running on https://65.75.203.137:5080
+[28/06/2026 06:51:26] INFO    : [33mPress CTRL+C to quit[0m
+[28/06/2026 06:55:27] DEBUG   : GET /api/status desde 169.197.85.170
+[28/06/2026 06:55:27] INFO    : 169.197.85.170 - - [28/Jun/2026 06:55:27] "GET /api/status HTTP/1.1" 200 -
+[28/06/2026 06:55:28] DEBUG   : GET /api/status desde 169.197.85.170
+[28/06/2026 06:55:28] INFO    : 169.197.85.170 - - [28/Jun/2026 06:55:28] "GET /api/status HTTP/1.1" 200 -
+[28/06/2026 06:55:29] INFO    : 169.197.85.170 - - [28/Jun/2026 06:55:29] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[28/06/2026 06:55:30] INFO    : 169.197.85.170 - - [28/Jun/2026 06:55:30] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[28/06/2026 07:27:16] DEBUG   : GET /api/status desde 169.197.85.170
+[28/06/2026 07:27:16] INFO    : 169.197.85.170 - - [28/Jun/2026 07:27:16] "GET /api/status HTTP/1.1" 200 -
