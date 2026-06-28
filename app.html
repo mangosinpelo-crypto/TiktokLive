@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>TikTok Live Reader</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 20px 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      padding-bottom: 16px;
+      border-bottom: 1px solid #333;
+      margin-bottom: 24px;
+    }
+    .titulo {
+      font-size: 24px;
+      font-weight: 700;
+      color: #FF3B30;
+      margin-bottom: 6px;
+    }
+    .estado {
+      font-size: 13px;
+      color: #FF9500;
+      transition: color 0.3s;
+    }
+    .estado.conectado { color: #34C759; }
+    .estado.error { color: #FF3B30; }
+
+    /* Secciones */
+    .seccion { margin-bottom: 20px; }
+    .etiqueta {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Inputs */
+    input {
+      width: 100%;
+      background: #1C1C1C;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #FF3B30; }
+    input::placeholder { color: #8E8E93; }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-group .prefijo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #FF3B30;
+      flex-shrink: 0;
+    }
+    .input-group input { flex: 1; }
+
+    /* Botones */
+    .botones {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .btn {
+      flex: 1;
+      padding: 13px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-iniciar { background: #FF3B30; }
+    .btn-detener { background: #444; }
+    .btn-estado { background: #444; cursor: default; }
+    .btn-estado.conectado { background: #34C759; }
+
+    /* Spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Comentarios */
+    .comentarios-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .vacio {
+      padding: 24px;
+      text-align: center;
+      background: #1C1C1C;
+      border-radius: 8px;
+      color: #8E8E93;
+      font-size: 13px;
+    }
+    .lista-comentarios {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+    .tarjeta {
+      background: #1C1C1C;
+      border-left: 3px solid #FF3B30;
+      padding: 12px;
+      border-radius: 6px;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tarjeta-usuario {
+      font-size: 13px;
+      font-weight: 600;
+      color: #FF3B30;
+      margin-bottom: 4px;
+    }
+    .tarjeta-texto {
+      font-size: 13px;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    /* Log de debug */
+    .debug-section {
+      margin-top: 24px;
+      border-top: 1px solid #333;
+      padding-top: 16px;
+    }
+    .debug-titulo {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8E8E93;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .debug-log {
+      background: #0a0a0a;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #8E8E93;
+      max-height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    .log-line { margin: 2px 0; line-height: 1.4; }
+    .log-ok { color: #34C759; }
+    .log-err { color: #FF3B30; }
+    .log-info { color: #0A84FF; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="titulo">🎤 TikTok Live Reader</div>
+    <div class="estado" id="estado">Desconectado</div>
+  </div>
+
+  <!-- URL Servidor -->
+  <div class="seccion">
+    <label class="etiqueta">URL del Servidor</label>
+    <input type="url" id="servidor" value="https://65.75.203.137:5080"
+           placeholder="https://ip:puerto" autocomplete="off" autocapitalize="none">
+  </div>
+
+  <!-- Usuario TikTok -->
+  <div class="seccion">
+    <label class="etiqueta">Usuario TikTok en live</label>
+    <div class="input-group">
+      <span class="prefijo">@</span>
+      <input type="text" id="usuario" placeholder="nombredeusuario"
+             autocomplete="off" autocapitalize="none" autocorrect="off">
+    </div>
+  </div>
+
+  <!-- Botones -->
+  <div class="botones">
+    <button class="btn btn-iniciar" id="btnAccion" onclick="toggleLive()">
+      ▶️ Iniciar
+    </button>
+    <button class="btn btn-estado" id="btnEstado" disabled>
+      🔴 Sin conexión
+    </button>
+  </div>
+
+  <!-- Comentarios -->
+  <div class="seccion">
+    <div class="comentarios-header" id="comentariosHeader">Comentarios (0)</div>
+    <div id="listaComentarios">
+      <div class="vacio" id="mensajeVacio">Inicia un live para escuchar comentarios</div>
+    </div>
+  </div>
+
+  <!-- Debug log -->
+  <div class="debug-section">
+    <div class="debug-titulo">Log de conexión</div>
+    <div class="debug-log" id="debugLog">
+      <div class="log-line log-info">Esperando...</div>
+    </div>
+  </div>
+
+<script>
+  let socket = null;
+  let liveActivo = false;
+  let conectado = false;
+  let comentarios = [];
+
+  // ─── Logging ───────────────────────────────────────────────────────────────
+
+  function log(msg, tipo = '') {
+    const el = document.getElementById('debugLog');
+    const linea = document.createElement('div');
+    linea.className = `log-line ${tipo}`;
+    const hora = new Date().toLocaleTimeString('es', { hour12: false });
+    linea.textContent = `[${hora}] ${msg}`;
+    el.prepend(linea);
+    // Máximo 30 líneas
+    while (el.children.length > 30) el.removeChild(el.lastChild);
+    console.log(`[${hora}] ${msg}`);
+  }
+
+  // ─── Estado UI ─────────────────────────────────────────────────────────────
+
+  function actualizarEstado(texto, clase = '') {
+    const el = document.getElementById('estado');
+    el.textContent = texto;
+    el.className = 'estado ' + clase;
+  }
+
+  function actualizarBotones() {
+    const btnAccion = document.getElementById('btnAccion');
+    const btnEstado = document.getElementById('btnEstado');
+
+    if (liveActivo) {
+      btnAccion.textContent = '⏹️ Detener';
+      btnAccion.className = 'btn btn-detener';
+    } else {
+      btnAccion.textContent = '▶️ Iniciar';
+      btnAccion.className = 'btn btn-iniciar';
+    }
+
+    btnAccion.disabled = !conectado;
+
+    if (conectado) {
+      btnEstado.textContent = '🟢 Conectado';
+      btnEstado.className = 'btn btn-estado conectado';
+    } else {
+      btnEstado.textContent = '🔴 Sin conexión';
+      btnEstado.className = 'btn btn-estado';
+    }
+  }
+
+  function agregarComentario(usuario, texto) {
+    comentarios.unshift({ usuario, texto });
+    if (comentarios.length > 50) comentarios.pop();
+
+    const lista = document.getElementById('listaComentarios');
+    const vacio = document.getElementById('mensajeVacio');
+    if (vacio) vacio.remove();
+
+    // Crear tarjeta
+    const tarjeta = document.createElement('div');
+    tarjeta.className = 'tarjeta';
+    tarjeta.innerHTML = `
+      <div class="tarjeta-usuario">${escapeHtml(usuario)}</div>
+      <div class="tarjeta-texto">${escapeHtml(texto)}</div>
+    `;
+    lista.insertBefore(tarjeta, lista.firstChild);
+
+    // Máximo 50 tarjetas
+    while (lista.children.length > 50) lista.removeChild(lista.lastChild);
+
+    document.getElementById('comentariosHeader').textContent = `Comentarios (${comentarios.length})`;
+  }
+
+  function escapeHtml(texto) {
+    return texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── Audio ─────────────────────────────────────────────────────────────────
+
+  async function reproducirAudio(base64Audio) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const bytes = atob(base64Audio);
+      const buffer = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+
+      const audioBuffer = await ctx.decodeAudioData(buffer.buffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      log('🔊 Audio reproducido', 'log-ok');
+    } catch (e) {
+      log(`❌ Error audio: ${e.message}`, 'log-err');
+    }
+  }
+
+  // ─── WebSocket ─────────────────────────────────────────────────────────────
+
+  function conectar() {
+    const servidor = document.getElementById('servidor').value.trim();
+    if (!servidor) return;
+
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
+
+    log(`🔄 Conectando a ${servidor}...`, 'log-info');
+    actualizarEstado('Conectando...', '');
+
+    socket = io(servidor, {
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000,
+      rejectUnauthorized: false,
+    });
+
+    socket.on('connect', () => {
+      conectado = true;
+      log(`✅ Conectado (id: ${socket.id})`, 'log-ok');
+      actualizarEstado('Conectado', 'conectado');
+      actualizarBotones();
+    });
+
+    socket.on('connect_error', (err) => {
+      conectado = false;
+      log(`❌ Error: ${err.message}`, 'log-err');
+      actualizarEstado(`Error: ${err.message}`, 'error');
+      actualizarBotones();
+    });
+
+    socket.on('disconnect', (reason) => {
+      conectado = false;
+      liveActivo = false;
+      log(`❌ Desconectado: ${reason}`, 'log-err');
+      actualizarEstado(`Desconectado`, 'error');
+      actualizarBotones();
+    });
+
+    socket.on('estado', (data) => {
+      log(`📊 Estado: live=${data.live_activo}, usuario=${data.usuario}`, 'log-info');
+      liveActivo = data.live_activo;
+      if (data.live_activo) actualizarEstado(`Live de @${data.usuario}`, 'conectado');
+      actualizarBotones();
+    });
+
+    socket.on('live_conectado', (data) => {
+      liveActivo = true;
+      log(`🎬 Live conectado: @${data.usuario}`, 'log-ok');
+      actualizarEstado(`✅ Live de @${data.usuario}`, 'conectado');
+      actualizarBotones();
+    });
+
+    socket.on('live_desconectado', (data) => {
+      liveActivo = false;
+      log('🔴 Live desconectado', 'log-err');
+      actualizarEstado('Live terminado', '');
+      actualizarBotones();
+    });
+
+    socket.on('nuevo_comentario', (data) => {
+      log(`💬 ${data.usuario}: ${data.texto}`, 'log-info');
+      agregarComentario(data.usuario, data.texto);
+    });
+
+    socket.on('reproducir_audio', (data) => {
+      log('🎵 Audio recibido, reproduciendo...', 'log-info');
+      reproducirAudio(data.audio);
+    });
+  }
+
+  // ─── Control del live ──────────────────────────────────────────────────────
+
+  async function toggleLive() {
+    if (liveActivo) {
+      await detenerLive();
+    } else {
+      await iniciarLive();
+    }
+  }
+
+  async function iniciarLive() {
+    const usuario = document.getElementById('usuario').value.trim();
+    if (!usuario) {
+      alert('Ingresa un usuario de TikTok');
+      return;
+    }
+
+    const servidor = document.getElementById('servidor').value.trim();
+    const btn = document.getElementById('btnAccion');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div>';
+
+    try {
+      log(`📡 Iniciando live de @${usuario}...`, 'log-info');
+      const res = await fetch(`${servidor}/api/iniciar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: usuario.replace('@', '') }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        log(`✅ Solicitud enviada: ${data.mensaje}`, 'log-ok');
+        actualizarEstado('Conectando al live...', '');
+      } else {
+        log(`❌ Error: ${data.error}`, 'log-err');
+        alert(data.error);
+      }
+    } catch (e) {
+      log(`❌ Error HTTP: ${e.message}`, 'log-err');
+      alert('No se pudo contactar el servidor');
+    } finally {
+      btn.disabled = false;
+      actualizarBotones();
+    }
+  }
+
+  async function detenerLive() {
+    const servidor = document.getElementById('servidor').value.trim();
+    try {
+      await fetch(`${servidor}/api/detener`, { method: 'POST' });
+      liveActivo = false;
+      log('⏹️ Live detenido', 'log-info');
+      actualizarEstado('Detenido', '');
+      actualizarBotones();
+    } catch (e) {
+      log(`❌ Error: ${e.message}`, 'log-err');
+    }
+  }
+
+  // Reconectar si cambia la URL
+  document.getElementById('servidor').addEventListener('change', () => {
+    if (!liveActivo) conectar();
+  });
+
+  // Conectar al cargar
+  window.addEventListener('load', () => {
+    log('Página cargada, conectando...', 'log-info');
+    conectar();
+  });
+</script>
+</body>
+</html>
