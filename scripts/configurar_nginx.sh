@@ -1,14 +1,8 @@
-#!/bin/bash
-# ═══════════════════════════════════════════════════════
-# Configurar Nginx como proxy HTTPS para TikTok Live Reader
-# Ubuntu 22.04 LTS
-# Uso: sudo bash configurar_nginx.sh
-# ═══════════════════════════════════════════════════════
 
 set -e
 
-PUERTO_FLASK=5000      # Puerto interno donde corre Flask (HTTP)
-PUERTO_NGINX=8443      # Puerto externo HTTPS (sin necesitar puerto 443)
+PUERTO_FLASK=5080 
+PUERTO_NGINX=8443      
 IP=$(hostname -I | awk '{print $1}')
 
 echo "╔══════════════════════════════════════════════════╗"

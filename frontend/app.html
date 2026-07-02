@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <title>TikTok Live Reader</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      padding-bottom: 40px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #222;
+      margin-bottom: 18px;
+    }
+
+    .titulo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #FF3B30;
+    }
+
+    .estado-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #222;
+      color: #8E8E93;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .estado-badge.conectado {
+      background: #0a2a0a;
+      color: #34C759;
+    }
+
+    .estado-badge.live {
+      background: #FF3B30;
+      color: #fff;
+    }
+
+    .estado-badge.error {
+      background: #2a0a0a;
+      color: #FF3B30;
+    }
+
+    .seccion {
+      margin-bottom: 16px;
+    }
+
+    .etiqueta {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8E8E93;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: #1C1C1C;
+      border: 1px solid #333;
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .input-group:focus-within {
+      border-color: #FF3B30;
+    }
+
+    .input-prefijo {
+      font-size: 18px;
+      font-weight: 700;
+      color: #FF3B30;
+      padding: 0 10px 0 14px;
+      flex-shrink: 0;
+    }
+
+    .input-group input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 13px 14px 13px 0;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .input-group input::placeholder {
+      color: #555;
+    }
+
+    .botones {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-iniciar {
+      background: #FF3B30;
+    }
+
+    .btn-detener {
+      background: #3A3A3C;
+    }
+
+    .btn-estado {
+      background: #3A3A3C;
+      cursor: default;
+      font-size: 13px;
+    }
+
+    .btn-estado.live {
+      background: #FF3B30;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Panel de configuración ── */
+    .config-panel {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .config-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      gap: 12px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .config-row:last-child {
+      border-bottom: none;
+    }
+
+    .config-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      width: 24px;
+      text-align: center;
+    }
+
+    .config-label {
+      font-size: 13px;
+      color: #aaa;
+      flex-shrink: 0;
+      min-width: 60px;
+    }
+
+    /* Voice selector */
+    .voice-select {
+      flex: 1;
+      background: #1C1C1C;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+    }
+
+    /* Volume row */
+    .volume-controls {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #333;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FF3B30;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FF3B30;
+      cursor: pointer;
+      border: none;
+    }
+
+    .volume-val {
+      font-size: 12px;
+      color: #666;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .btn-mute {
+      background: none;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #aaa;
+      font-size: 16px;
+      padding: 6px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .btn-mute.activo {
+      border-color: #FF3B30;
+      color: #FF3B30;
+    }
+
+    /* ── Silenciar usuarios ── */
+    .silenciar-input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .silenciar-input-row input {
+      flex: 1;
+      background: #1C1C1C;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .silenciar-input-row input:focus {
+      border-color: #FF9500;
+    }
+
+    .silenciar-input-row input::placeholder {
+      color: #555;
+    }
+
+    .btn-silenciar {
+      background: #FF9500;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    .btn-silenciar:active {
+      opacity: 0.7;
+    }
+
+    .lista-silenciados {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      min-height: 0;
+    }
+
+    .tag-silenciado {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #1a1000;
+      border: 1px solid #FF9500;
+      border-radius: 20px;
+      padding: 4px 10px 4px 12px;
+      font-size: 12px;
+      color: #FF9500;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .tag-silenciado button {
+      background: none;
+      border: none;
+      color: #FF9500;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+      opacity: 0.7;
+    }
+
+    .tag-silenciado button:hover {
+      opacity: 1;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* ── Comentarios ── */
+    .comentarios-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8E8E93;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .lista-comentarios {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 38vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .vacio {
+      padding: 24px;
+      text-align: center;
+      background: #111;
+      border-radius: 10px;
+      color: #555;
+      font-size: 13px;
+    }
+
+    .tarjeta {
+      background: #111;
+      border-left: 3px solid #333;
+      padding: 10px 12px;
+      border-radius: 8px;
+      animation: slideIn 0.2s ease;
+      transition: border-color 0.3s, background 0.3s;
+    }
+
+    .tarjeta.en-cola {
+      border-left-color: #FF9500;
+    }
+
+    .tarjeta.reproduciendo {
+      border-left-color: #34C759;
+      background: #071a07;
+    }
+
+    .tarjeta.reproducida {
+      border-left-color: #222;
+      opacity: 0.5;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tarjeta-usuario {
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+      margin-bottom: 3px;
+    }
+
+    .tarjeta.en-cola .tarjeta-usuario {
+      color: #FF9500;
+    }
+
+    .tarjeta.reproduciendo .tarjeta-usuario {
+      color: #34C759;
+    }
+
+    .tarjeta-texto {
+      font-size: 13px;
+      color: #ddd;
+      line-height: 1.4;
+    }
+
+    /* ── Log ── */
+    .debug-section {
+      margin-top: 16px;
+      border-top: 1px solid #1a1a1a;
+      padding-top: 14px;
+    }
+
+    .debug-titulo {
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .debug-log {
+      background: #080808;
+      border: 1px solid #1a1a1a;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: #555;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .log-line {
+      margin: 2px 0;
+      line-height: 1.5;
+    }
+
+    .log-ok {
+      color: #34C759;
+    }
+
+    .log-err {
+      color: #FF3B30;
+    }
+
+    .log-info {
+      color: #0A84FF;
+    }
+
+    .log-warn {
+      color: #FF9500;
+    }
+
+    /* ── Separador ── */
+    .sep {
+      height: 1px;
+      background: #1a1a1a;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="titulo">🎤 TikTok Live Reader</div>
+    <div class="estado-badge" id="estadoBadge">Conectando...</div>
+  </div>
+
+  <!-- USUARIO -->
+  <div class="seccion">
+    <label class="etiqueta">Usuario TikTok en live</label>
+    <div class="input-group">
+      <span class="input-prefijo">@</span>
+      <input type="text" id="usuario" placeholder="nombredeusuario" autocomplete="off" autocapitalize="none"
+        autocorrect="off" inputmode="text">
+    </div>
+  </div>
+
+  <!-- BOTONES -->
+  <div class="botones">
+    <button class="btn btn-iniciar" id="btnAccion" onclick="toggleLive()" disabled>▶ Iniciar</button>
+    <button class="btn btn-estado" id="btnEstado" disabled>🔴 Sin conexión</button>
+  </div>
+
+  <!-- CONFIG: VOZ + VOLUMEN -->
+  <div class="config-panel">
+
+    <!-- Voz -->
+    <div class="config-row">
+      <span class="config-icon">🎙️</span>
+      <span class="config-label">Voz</span>
+      <select class="voice-select" id="vozSelect" onchange="cambiarVoz()">
+        <option value="es-MX-DaliaNeural">Dalia — México 🇲🇽 ⭐</option>
+        <option value="es-MX-JorgeNeural">Jorge — México 🇲🇽</option>
+        <option value="es-ES-ElviraNeural">Elvira — España 🇪🇸</option>
+        <option value="es-ES-AlvaroNeural">Álvaro — España 🇪🇸</option>
+        <option value="es-AR-ElenaNeural">Elena — Argentina 🇦🇷</option>
+        <option value="es-AR-TomasNeural">Tomás — Argentina 🇦🇷</option>
+        <option value="es-CO-SalomeNeural">Salomé — Colombia 🇨🇴</option>
+        <option value="es-CO-GonzaloNeural">Gonzalo — Colombia 🇨🇴</option>
+        <option value="es-US-PalomaNeural">Paloma — US Latino 🇺🇸</option>
+        <option value="es-US-AlonsoNeural">Alonso — US Latino 🇺🇸</option>
+        <option value="es-CL-CatalinaNeural">Catalina — Chile 🇨🇱</option>
+        <option value="es-VE-PaolaNeural">Paola — Venezuela 🇻🇪</option>
+      </select>
+    </div>
+
+    <!-- Volumen -->
+    <div class="config-row">
+      <span class="config-icon">🔊</span>
+      <span class="config-label">Volumen</span>
+      <div class="volume-controls">
+        <input type="range" id="volumenSlider" min="0" max="100" value="100" oninput="actualizarVolumen()"
+          ontouchstart="desbloquearAudio()">
+        <span class="volume-val" id="volumenVal">100%</span>
+        <button class="btn-mute" id="btnMute" onclick="toggleMute()" title="Silenciar/Activar">🔊</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SILENCIAR USUARIOS -->
+  <div class="seccion">
+    <label class="etiqueta">🔇 Silenciar usuarios</label>
+    <div class="silenciar-input-row">
+      <input type="text" id="silenciarInput" placeholder="@usuario" autocomplete="off" autocapitalize="none"
+        autocorrect="off" onkeydown="if(event.key==='Enter') silenciarUsuario()">
+      <button class="btn-silenciar" onclick="silenciarUsuario()">Silenciar</button>
+    </div>
+    <div class="lista-silenciados" id="listaSilenciados"></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- COMENTARIOS -->
+  <div class="seccion">
+    <div class="comentarios-header" id="comentariosHeader">Comentarios (0)</div>
+    <div class="lista-comentarios" id="listaComentarios">
+      <div class="vacio" id="mensajeVacio">Inicia un live para escuchar comentarios</div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="debug-section">
+    <div class="debug-titulo">Log de conexión</div>
+    <div class="debug-log" id="debugLog"></div>
+  </div>
+
+  <audio id="audioUnlocker" preload="none" style="display:none;"></audio>
+
+  <script>
+    // ─── Constantes ────
+    const SERVIDOR = 'https://tiktokcomentreader.duckdns.org';
+
+    // ─── Estado ─────
+    let socket = null;
+    let liveActivo = false;
+    let conectado = false;
+    let totalComentarios = 0;
+    let tarjetasMap = new Map();
+
+    // Audio
+    let audioCtx = null;
+    let gainNode = null;
+    let volumenActual = 1.0;
+    let muteado = false;
+    let volAntesMute = 1.0;
+
+    // Wake lock
+    let wakeLock = null;
+
+    // ─── Log ──
+
+    function log(msg, tipo = '') {
+      const el = document.getElementById('debugLog');
+      const div = document.createElement('div');
+      div.className = 'log-line ' + tipo;
+      const h = new Date().toLocaleTimeString('es', { hour12: false });
+      div.textContent = `[${h}] ${msg}`;
+      el.prepend(div);
+      while (el.children.length > 60) el.removeChild(el.lastChild);
+    }
+
+    // ─── UI ────
+
+    function setEstado(texto, clase = '') {
+      const el = document.getElementById('estadoBadge');
+      el.textContent = texto;
+      el.className = 'estado-badge ' + clase;
+    }
+
+    function actualizarBotones() {
+      const btnAccion = document.getElementById('btnAccion');
+      const btnEstado = document.getElementById('btnEstado');
+      btnAccion.disabled = !conectado;
+      if (liveActivo) {
+        btnAccion.textContent = '⏹ Detener';
+        btnAccion.className = 'btn btn-detener';
+        btnEstado.textContent = '🔴 En vivo';
+        btnEstado.className = 'btn btn-estado live';
+      } else {
+        btnAccion.textContent = '▶ Iniciar';
+        btnAccion.className = 'btn btn-iniciar';
+        if (conectado) {
+          btnEstado.textContent = '🟢 Conectado';
+          btnEstado.className = 'btn btn-estado';
+        } else {
+          btnEstado.textContent = '🔴 Sin conexión';
+          btnEstado.className = 'btn btn-estado';
+        }
+      }
+    }
+
+    function agregarTarjeta(usuario, texto, estado = 'en-cola') {
+      totalComentarios++;
+      const lista = document.getElementById('listaComentarios');
+      const vacio = document.getElementById('mensajeVacio');
+      if (vacio) vacio.remove();
+
+      const tarjeta = document.createElement('div');
+      tarjeta.className = `tarjeta ${estado}`;
+      tarjeta.innerHTML = `
+        <div class="tarjeta-usuario">${esc(usuario)}</div>
+        <div class="tarjeta-texto">${esc(texto)}</div>`;
+      lista.insertBefore(tarjeta, lista.firstChild);
+      while (lista.children.length > 60) lista.removeChild(lista.lastChild);
+      document.getElementById('comentariosHeader').textContent = `Comentarios (${totalComentarios})`;
+
+      const key = `${usuario}:${texto}`;
+      tarjetasMap.set(key, tarjeta);
+      return tarjeta;
+    }
+
+    function esc(t) {
+      return String(t)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // ─── Audio ────
+
+    function desbloquearAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.value = muteado ? 0 : volumenActual;
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: 'TikTok Live Reader',
+          artist: 'Leyendo comentarios...',
+        });
+        navigator.mediaSession.playbackState = 'playing';
+      }
+    }
+
+    function actualizarVolumen() {
+      const slider = document.getElementById('volumenSlider');
+      volumenActual = slider.value / 100;
+      document.getElementById('volumenVal').textContent = slider.value + '%';
+
+      if (!muteado && gainNode) gainNode.gain.value = volumenActual;
+
+      if (muteado && volumenActual > 0) {
+        muteado = false;
+        const btnMute = document.getElementById('btnMute');
+        btnMute.textContent = '🔊';
+        btnMute.classList.remove('activo');
+      }
+    }
+
+    function toggleMute() {
+      muteado = !muteado;
+      const btnMute = document.getElementById('btnMute');
+      const radio = document.getElementById('radioStream');
+
+      if (muteado) {
+        volAntesMute = volumenActual;
+        if (gainNode) gainNode.gain.value = 0;
+        btnMute.textContent = '🔇';
+        btnMute.classList.add('activo');
+        log('🔇 Audio silenciado', 'log-warn');
+      } else {
+        if (gainNode) gainNode.gain.value = volumenActual;
+        btnMute.textContent = '🔊';
+        btnMute.classList.remove('activo');
+        log('🔊 Audio restaurado', 'log-ok');
+      }
+    }
+
+    async function reproducirAudio(usuario, texto, base64Audio) {
+      const key = `${usuario}:${texto}`;
+      const tarjeta = tarjetasMap.get(key);
+
+      if (tarjeta) {
+        tarjeta.className = 'tarjeta reproduciendo';
+        tarjeta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      desbloquearAudio();
+
+      try {
+        const binStr = atob(base64Audio);
+        const buf = new Uint8Array(binStr.length);
+        for (let i = 0; i < binStr.length; i++) buf[i] = binStr.charCodeAt(i);
+
+        let reproducido = false;
+        if (audioCtx) {
+          try {
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            const decoded = await audioCtx.decodeAudioData(buf.buffer.slice(0));
+            await new Promise((resolve, reject) => {
+              const source = audioCtx.createBufferSource();
+              source.buffer = decoded;
+              source.connect(gainNode);
+              source.onended = resolve;
+              source.onerror = reject;
+              source.start(0);
+            });
+            reproducido = true;
+          } catch (e) {
+            log(`⚠️ AudioContext falló, fallback: ${e.message}`, 'log-warn');
+          }
+        }
+
+        if (!reproducido) {
+          const blob = new Blob([buf], { type: 'audio/mpeg' });
+          const url = URL.createObjectURL(blob);
+          await new Promise((resolve, reject) => {
+            const audio = new Audio(url);
+            audio.volume = muteado ? 0 : volumenActual;
+            audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+            audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('audio error')); };
+            audio.play().catch(reject);
+          });
+        }
+
+        log(`✅ Terminó: ${usuario}`, 'log-ok');
+
+      } catch (e) {
+        log(`❌ Error audio: ${e.message}`, 'log-err');
+      } finally {
+        if (tarjeta) tarjeta.className = 'tarjeta reproducida';
+        tarjetasMap.delete(key);
+        if (socket && socket.connected) {
+          socket.emit('audio_terminado');
+        }
+      }
+    }
+
+    // ─── Voz ─────
+
+    async function cambiarVoz() {
+      const voz = document.getElementById('vozSelect').value;
+      try {
+        await fetch(`${SERVIDOR}/api/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voz }),
+        });
+        log(`🎙️ Voz: ${document.getElementById('vozSelect').selectedOptions[0].text}`, 'log-ok');
+      } catch (e) {
+        log(`❌ Error cambiando voz: ${e.message}`, 'log-err');
+      }
+    }
+
+    // ─── Silenciar usuarios ─────
+
+    const usuariosSilenciados = new Set();
+
+    async function silenciarUsuario() {
+      const input = document.getElementById('silenciarInput');
+      const usuario = input.value.trim().replace(/^@+/, '').toLowerCase();
+      if (!usuario) return;
+
+      try {
+        await fetch(`${SERVIDOR}/api/silenciar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario }),
+        });
+        usuariosSilenciados.add(usuario);
+        renderizarSilenciados();
+        input.value = '';
+        log(`🔇 Silenciado: @${usuario}`, 'log-warn');
+      } catch (e) {
+        log(`❌ Error: ${e.message}`, 'log-err');
+      }
+    }
+
+    async function quitarSilencio(usuario) {
+      try {
+        await fetch(`${SERVIDOR}/api/silenciar`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario }),
+        });
+        usuariosSilenciados.delete(usuario);
+        renderizarSilenciados();
+        log(`🔊 Des-silenciado: @${usuario}`, 'log-ok');
+      } catch (e) {
+        log(`❌ Error: ${e.message}`, 'log-err');
+      }
+    }
+
+    function renderizarSilenciados() {
+      const lista = document.getElementById('listaSilenciados');
+      lista.innerHTML = '';
+      usuariosSilenciados.forEach(u => {
+        const tag = document.createElement('div');
+        tag.className = 'tag-silenciado';
+        tag.innerHTML = `@${esc(u)}<button onclick="quitarSilencio('${esc(u)}')" title="Des-silenciar">×</button>`;
+        lista.appendChild(tag);
+      });
+    }
+
+    // ─── Wake Lock ──────
+
+    async function solicitarWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          log('📺 Wake lock activo (pantalla no se apagará)', 'log-info');
+          wakeLock.addEventListener('release', () => {
+            log('📺 Wake lock liberado', 'log-warn');
+          });
+        }
+      } catch (e) {
+        log(`⚠️ Wake lock no disponible: ${e.message}`, 'log-warn');
+      }
+    }
+
+    async function liberarWakeLock() {
+      if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    }
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && liveActivo && !wakeLock) {
+        await solicitarWakeLock();
+      }
+
+      if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+        log('▶️ AudioContext reactivado', 'log-info');
+      }
+    });
+
+    // ─── WebSocket ──────
+
+    function conectar() {
+      if (socket) { socket.disconnect(); socket = null; }
+
+      log(`🔄 Conectando a servidor...`, 'log-info');
+      setEstado('Conectando...', '');
+
+      socket = io(SERVIDOR, {
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 2000,
+        timeout: 10000,
+      });
+
+      socket.on('connect', () => {
+        conectado = true;
+        log(`✅ Conectado (id: ${socket.id})`, 'log-ok');
+        setEstado('Conectado', 'conectado');
+        socket.emit('audio_terminado');
+        actualizarBotones();
+      });
+
+      socket.on('connect_error', (err) => {
+        conectado = false;
+        log(`❌ Error: ${err.message}`, 'log-err');
+        setEstado('Sin conexión', 'error');
+        actualizarBotones();
+      });
+
+      socket.on('disconnect', (reason) => {
+        conectado = false;
+        liveActivo = false;
+        log(`❌ Desconectado: ${reason}`, 'log-err');
+        setEstado('Desconectado', 'error');
+        actualizarBotones();
+      });
+
+      socket.on('estado', (data) => {
+        liveActivo = data.live_activo;
+        if (data.live_activo) setEstado(`🔴 ${data.usuario}`, 'live');
+        actualizarBotones();
+      });
+
+      socket.on('live_conectado', (data) => {
+        liveActivo = true;
+        log(`🎬 Live: ${data.usuario}`, 'log-ok');
+        setEstado(`🔴 ${data.usuario}`, 'live');
+        actualizarBotones();
+        solicitarWakeLock();
+      });
+
+      socket.on('live_desconectado', (data) => {
+        liveActivo = false;
+        const msg = data?.mensaje || 'Live terminado';
+        const esError = msg.includes('no encontrado') || msg.includes('Error');
+        log(esError ? `❌ ${msg}` : `⏹ ${msg}`, esError ? 'log-err' : 'log-warn');
+        setEstado(esError ? `❌ Error` : 'Live terminado', esError ? 'error' : '');
+        actualizarBotones();
+        liberarWakeLock();
+      });
+
+      socket.on('nuevo_comentario', (data) => {
+        log(`💬 ${data.usuario}: ${data.texto}`, 'log-info');
+        agregarTarjeta(data.usuario, data.texto, 'en-cola');
+      });
+
+      socket.on('reproducir_audio', (data) => {
+        log(`🎵 Reproduciendo: ${data.usuario}`, 'log-info');
+        reproducirAudio(data.usuario, data.texto, data.audio);
+      });
+    }
+
+    // ─── Control live ──────
+
+    async function toggleLive() {
+      desbloquearAudio();
+      if (liveActivo) await detenerLive();
+      else await iniciarLive();
+    }
+
+    async function iniciarLive() {
+      const usuario = document.getElementById('usuario').value.trim().replace(/^@+/, '');
+      if (!usuario) { alert('Ingresa un usuario de TikTok'); return; }
+
+      const btn = document.getElementById('btnAccion');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const res = await fetch(`${SERVIDOR}/api/iniciar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          log(`✅ ${data.mensaje}`, 'log-ok');
+          setEstado('Conectando al live...', '');
+        } else {
+          log(`❌ ${data.error}`, 'log-err');
+          alert(data.error);
+        }
+      } catch (e) {
+        log(`❌ Error: ${e.message}`, 'log-err');
+        alert('No se pudo contactar el servidor');
+      } finally {
+        btn.disabled = false;
+        actualizarBotones();
+      }
+    }
+
+    async function detenerLive() {
+      if (socket && socket.connected) socket.emit('audio_terminado');
+      tarjetasMap.clear();
+
+      try {
+        await fetch(`${SERVIDOR}/api/detener`, { method: 'POST' });
+        liveActivo = false;
+        log('⏹ Live detenido', 'log-warn');
+        setEstado('Detenido', '');
+        actualizarBotones();
+        liberarWakeLock();
+      } catch (e) {
+        log(`❌ Error: ${e.message}`, 'log-err');
+      }
+    }
+
+    // ─── Init ───
+
+    window.addEventListener('load', () => {
+      log('Página cargada, conectando...', 'log-info');
+      document.getElementById('volumenSlider').value = 100;
+      document.getElementById('volumenVal').textContent = '100%';
+      conectar();
+    });
+
+    document.addEventListener('touchstart', desbloquearAudio, { once: true, capture: true });
+    document.addEventListener('click', desbloquearAudio, { once: true, capture: true });
+  </script>
+</body>
+
+</html>
